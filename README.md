@@ -50,6 +50,7 @@ This project follows a **serverless architecture** using AWS services:
 - **Amazon DynamoDB** – Stores movies, reviewers, and reviews (single-table design)
 - **Amazon Cognito** – User authentication and authorisation
 - **AWS CDK (TypeScript)** – Infrastructure provisioning
+- **AWS Lambda** – Handles API logic with shared dependencies via Lambda Layers
 
 ---
 
@@ -112,6 +113,10 @@ All entities (Movies, Reviewers, Reviews) are stored in one DynamoDB table using
 ### Custom Authorizer
 A Lambda authorizer validates the JWT token from the `Cookie` header on all `POST` and `PUT` requests. On success, the reviewer's username is passed as `principalId` to downstream Lambda functions, eliminating the need to include the reviewer ID in the request body.
 
+### Lambda Layers
+A shared Lambda Layer (`CommonLayer`) packages external dependencies (`axios`, `jsonwebtoken`, `jwk-to-pem`, `aws-jwt-verify`) used across multiple Lambda functions. Instead of bundling these into each function individually, all functions reference the layer at runtime. This reduces individual bundle sizes, improves cold start performance, and eliminates dependency duplication across the Auth and App API functions.
+
+
 ---
 
 ## Technologies Used
@@ -122,6 +127,7 @@ A Lambda authorizer validates the JWT token from the `Cookie` header on all `POS
 - Amazon API Gateway
 - Amazon DynamoDB
 - Amazon Cognito
+- AWS Lambda Layers (shared dependency optimisation)
 
 ---
 
