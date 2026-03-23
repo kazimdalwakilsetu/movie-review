@@ -1,3 +1,4 @@
+import * as path from "path";
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as apig from "aws-cdk-lib/aws-apigateway";
@@ -58,7 +59,7 @@ export class AuthApi extends Construct {
 
     const fn = new node.NodejsFunction(this, fnName, {
       ...commonFnProps,
-      entry: `${__dirname}/../../lambdas/auth/${fnEntry}`,
+      entry: path.join(process.cwd(), `lambdas/auth/${fnEntry}`),
     });
 
     resource.addMethod(method, new apig.LambdaIntegration(fn));
