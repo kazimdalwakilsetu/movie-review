@@ -1,36 +1,53 @@
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
-import {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-} from "@aws-sdk/client-cognito-identity-provider";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
-const client = new CognitoIdentityProviderClient({ region: process.env.REGION });
+const ddbClient = DynamoDBDocumentClient.from(
+  new DynamoDBClient({ region: process.env.REGION })
+);
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const body = JSON.parse(event.body || "{}");
-  const { username, password } = body;
+  const movieId = event.pathParameters?.movieId;
+  const reviewerId = event.queryStringParameters?.reviewer;
+
+  if (!movieId) {
+    return { statusCode: 400, body: JSON.stringify({ message: "Missing movieId" }) };
+  }
 
   try {
-    const result = await client.send(
-      new InitiateAuthCommand({
-        AuthFlow: "USER_PASSWORD_AUTH",
-        ClientId: process.env.CLIENT_ID!,
-        AuthParameters: {
-          USERNAME: username,
-          PASSWORD: password,
+    if (reviewerId) {
+      const result = await ddbClient.send(
+        new QueryCommand({
+          TableName: process.env.TABLE_NAME,
+          KeyConditionExpression: "PK = :pk AND SK = :sk",
+          ExpressionAttributeValues: {
+            ":pk": `m#${movieId}`,
+            ":sk": `r#${reviewerId}`,
+          },
+        })
+      );
+      return {
+        statusCode: 200,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reviews: result.Items }),
+      };
+    }
+
+    const result = await ddbClient.send(
+      new QueryCommand({
+        TableName: process.env.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: {
+          ":pk": `m#${movieId}`,
+          ":prefix": "r#",
         },
       })
     );
 
-    const token = result.AuthenticationResult?.IdToken;
-
     return {
       statusCode: 200,
-      headers: {
-        "Set-Cookie": `token=${token}; SameSite=None; Secure; HttpOnly; Path=/; Max-Age=3600`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message: "Signed in successfully", token }),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reviews: result.Items }),
     };
   } catch (err) {
     return {

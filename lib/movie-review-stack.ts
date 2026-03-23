@@ -3,6 +3,7 @@ import { Construct } from "constructs";
 import { UserPool } from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as custom from "aws-cdk-lib/custom-resources";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import { AuthApi } from "./constructs/auth-api";
 import { AppApi } from "./constructs/app-api";
 import { movies, reviews, reviewers } from "../seed/movies";
@@ -27,11 +28,18 @@ export class MovieReviewStack extends cdk.Stack {
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
-//
+
     table.addLocalSecondaryIndex({
       indexName: "DateIndex",
       sortKey: { name: "date", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    const commonLayer = new lambda.LayerVersion(this, "CommonLayer", {
+      code: lambda.Code.fromAsset("layers"),
+      compatibleRuntimes: [lambda.Runtime.NODEJS_18_X],
+      compatibleArchitectures: [lambda.Architecture.ARM_64],
+      description: "Shared dependencies layer",
     });
 
     const seedItems = [
@@ -89,6 +97,7 @@ export class MovieReviewStack extends cdk.Stack {
     new AuthApi(this, "AuthServiceApi", {
       userPoolId: userPool.userPoolId,
       userPoolClientId: appClient.userPoolClientId,
+      commonLayer,
     });
 
     new AppApi(this, "AppApi", {
@@ -96,6 +105,7 @@ export class MovieReviewStack extends cdk.Stack {
       userPoolClientId: appClient.userPoolClientId,
       tableName: table.tableName,
       tableArn: table.tableArn,
+      commonLayer,
     });
   }
 }

@@ -1,45 +1,60 @@
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { APIGatewayProxyHandler } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 const ddbClient = DynamoDBDocumentClient.from(
   new DynamoDBClient({ region: process.env.REGION })
 );
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const movieId = event.queryStringParameters?.movie;
-  const published = event.queryStringParameters?.published;
+export const handler: APIGatewayProxyHandler = async (event) => {
+  const reviewerId = event.requestContext?.authorizer?.principalId;
+  const movieId = event.pathParameters?.movieId;
 
-  if (!movieId || !published) {
+  if (!reviewerId) {
+    return { statusCode: 401, body: JSON.stringify({ message: "Unauthorised" }) };
+  }
+
+  if (!movieId) {
+    return { statusCode: 400, body: JSON.stringify({ message: "Missing movieId" }) };
+  }
+
+  const body = JSON.parse(event.body || "{}");
+  const { text } = body;
+
+  if (!text) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ message: "Missing required query params: movie and published" }),
+      body: JSON.stringify({ message: "Missing required field: text" }),
     };
   }
 
   try {
-    const result = await ddbClient.send(
-      new QueryCommand({
+    await ddbClient.send(
+      new UpdateCommand({
         TableName: process.env.TABLE_NAME,
-        IndexName: "DateIndex",
-        KeyConditionExpression: "PK = :pk AND begins_with(#d, :date)",
-        ExpressionAttributeNames: { "#d": "date" },
-        ExpressionAttributeValues: {
-          ":pk": `m#${movieId}`,
-          ":date": published,
+        Key: {
+          PK: `m#${movieId}`,
+          SK: `r#${reviewerId}`,
         },
+        UpdateExpression: "SET #t = :text",
+        ConditionExpression: "attribute_exists(PK)",
+        ExpressionAttributeNames: { "#t": "text" },
+        ExpressionAttributeValues: { ":text": text },
       })
     );
 
     return {
       statusCode: 200,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reviews: result.Items }),
+      body: JSON.stringify({ message: "Review updated successfully" }),
     };
-  } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: (err as Error).message }),
-    };
+  } catch (err: any) {
+    if (err.name === "ConditionalCheckFailedException") {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ message: "Review not found or you are not the reviewer" }),
+      };
+    }
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
