@@ -4,23 +4,42 @@ import { CookieMap, createPolicy, parseCookies, verifyToken } from "../utils";
 export const handler: APIGatewayRequestAuthorizerHandler = async (event) => {
   console.log("[EVENT]", event);
 
-  const cookies: CookieMap = parseCookies(event);
+  try {
+    const cookies: CookieMap = parseCookies(event);
 
-  if (!cookies) {
+    if (!cookies || !cookies.token) {
+      return {
+        principalId: "",
+        policyDocument: createPolicy(event, "Deny"),
+      };
+    }
+
+    const verifiedJwt = await verifyToken(
+      cookies.token,
+      process.env.USER_POOL_ID,
+      process.env.REGION!
+    );
+
+    if (!verifiedJwt) {
+      return {
+        principalId: "",
+        policyDocument: createPolicy(event, "Deny"),
+      };
+    }
+
+    return {
+      principalId: verifiedJwt.sub!.toString(),
+      policyDocument: createPolicy(event, "Allow"),
+      context: {
+        email: verifiedJwt.email,
+        username: verifiedJwt["cognito:username"],
+      },
+    };
+  } catch (err) {
+    console.error("[authorizer] error:", err);
     return {
       principalId: "",
       policyDocument: createPolicy(event, "Deny"),
     };
   }
-
-  const verifiedJwt = await verifyToken(
-    cookies.token,
-    process.env.USER_POOL_ID,
-    process.env.REGION!
-  );
-
-  return {
-    principalId: verifiedJwt ? verifiedJwt.sub!.toString() : "",
-    policyDocument: createPolicy(event, verifiedJwt ? "Allow" : "Deny"),
-  };
 };
