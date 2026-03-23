@@ -11,6 +11,7 @@ type AppApiProps = {
   userPoolClientId: string;
   tableName: string;
   tableArn: string;
+  commonLayer: lambda.ILayerVersion;
 };
 
 export class AppApi extends Construct {
@@ -23,6 +24,15 @@ export class AppApi extends Construct {
       memorySize: 128,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: "handler",
+      layers: [props.commonLayer],
+      bundling: {
+        externalModules: [
+          "axios",
+          "jsonwebtoken",
+          "jwk-to-pem",
+          "aws-jwt-verify",
+        ],
+      },
       environment: {
         TABLE_NAME: props.tableName,
         USER_POOL_ID: props.userPoolId,
@@ -86,17 +96,17 @@ export class AppApi extends Construct {
 
     const moviesRes = api.root.addResource("movies");
 
-    const moviesReviewsRes = moviesRes.addResource("reviews");
-    moviesReviewsRes.addMethod("POST", new apig.LambdaIntegration(addMovieReviewFn), {
-      authorizer: requestAuthorizer,
-      authorizationType: apig.AuthorizationType.CUSTOM,
-    });
-
     const movieRes = moviesRes.addResource("{movieId}");
     const movieReviewsRes = movieRes.addResource("reviews");
 
     movieReviewsRes.addMethod("GET", new apig.LambdaIntegration(getMovieReviewsFn));
     movieReviewsRes.addMethod("PUT", new apig.LambdaIntegration(updateMovieReviewFn), {
+      authorizer: requestAuthorizer,
+      authorizationType: apig.AuthorizationType.CUSTOM,
+    });
+
+    const moviesReviewsRes = moviesRes.addResource("reviews");
+    moviesReviewsRes.addMethod("POST", new apig.LambdaIntegration(addMovieReviewFn), {
       authorizer: requestAuthorizer,
       authorizationType: apig.AuthorizationType.CUSTOM,
     });

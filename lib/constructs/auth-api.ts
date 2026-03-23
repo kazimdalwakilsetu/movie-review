@@ -8,17 +8,20 @@ import * as node from "aws-cdk-lib/aws-lambda-nodejs";
 type AuthApiProps = {
   userPoolId: string;
   userPoolClientId: string;
+  commonLayer: lambda.ILayerVersion;
 };
 
 export class AuthApi extends Construct {
   private auth: apig.IResource;
   private userPoolId: string;
   private userPoolClientId: string;
+  private commonLayer: lambda.ILayerVersion;
 
   constructor(scope: Construct, id: string, props: AuthApiProps) {
     super(scope, id);
 
     ({ userPoolId: this.userPoolId, userPoolClientId: this.userPoolClientId } = props);
+    this.commonLayer = props.commonLayer;
 
     const api = new apig.RestApi(this, "AuthServiceApi", {
       description: "Authentication Service RestApi",
@@ -48,6 +51,15 @@ export class AuthApi extends Construct {
       memorySize: 128,
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: "handler",
+      layers: [this.commonLayer],
+      bundling: {
+        externalModules: [
+          "axios",
+          "jsonwebtoken",
+          "jwk-to-pem",
+          "aws-jwt-verify",
+        ],
+      },
       environment: {
         USER_POOL_ID: this.userPoolId,
         CLIENT_ID: this.userPoolClientId,
