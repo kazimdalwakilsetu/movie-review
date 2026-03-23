@@ -27,7 +27,7 @@ export class MovieReviewStack extends cdk.Stack {
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
-
+//
     table.addLocalSecondaryIndex({
       indexName: "DateIndex",
       sortKey: { name: "date", type: dynamodb.AttributeType.STRING },
