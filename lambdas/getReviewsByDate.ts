@@ -21,7 +21,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const result = await ddbClient.send(
       new QueryCommand({
         TableName: process.env.TABLE_NAME,
-        IndexName: "DateIndex",
+        IndexName: "DateIndex", // uses the LSI
         KeyConditionExpression: "PK = :pk AND begins_with(#d, :date)",
         ExpressionAttributeNames: { "#d": "date" },
         ExpressionAttributeValues: {

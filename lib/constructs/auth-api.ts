@@ -23,22 +23,34 @@ export class AuthApi extends Construct {
     ({ userPoolId: this.userPoolId, userPoolClientId: this.userPoolClientId } = props);
     this.commonLayer = props.commonLayer;
 
+    // creates an API Gateway REST API 
     const api = new apig.RestApi(this, "AuthServiceApi", {
       description: "Authentication Service RestApi",
       endpointTypes: [apig.EndpointType.REGIONAL],
       defaultCorsPreflightOptions: {
-        allowOrigins: apig.Cors.ALL_ORIGINS,
+        allowOrigins: ["http://localhost:5173"],
+        allowMethods: apig.Cors.ALL_METHODS,
+        allowHeaders: [
+          "Content-Type",
+          "X-Amz-Date",
+          "Authorization",
+          "X-Api-Key",
+          "X-Amz-Security-Token",
+        ],
+        allowCredentials: true,
       },
     });
 
     this.auth = api.root.addResource("auth");
-
+    //resourceName, method, fnName,     fnEntry
     this.addAuthRoute("signup", "POST", "SignupFn", "signup.ts");
     this.addAuthRoute("confirm_signup", "POST", "ConfirmFn", "confirm-signup.ts");
     this.addAuthRoute("signout", "GET", "SignoutFn", "signout.ts");
     this.addAuthRoute("signin", "POST", "SigninFn", "signin.ts");
   }
 
+  //lambda config helper method
+  // Every Lambda function gets the same base config
   private addAuthRoute(
     resourceName: string,
     method: string,

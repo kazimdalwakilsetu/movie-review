@@ -58,7 +58,7 @@ export const verifyToken = async (
   try {
     const url = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
     const { data }: { data: Jwk } = await axios.get(url);
-    const pem = jwkToPem(data.keys[0]);
+    const pem = jwkToPem(data.keys[0]); // jsonwebtoken needs it in PEM format, Jason > PEM
     return jwt.verify(token, pem, { algorithms: ["RS256"] }) as JwtToken;
   } catch (err) {
     console.log(err);

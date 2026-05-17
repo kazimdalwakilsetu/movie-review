@@ -28,8 +28,8 @@ export const handler: APIGatewayRequestAuthorizerHandler = async (event) => {
     }
 
     return {
-      principalId: verifiedJwt.sub!.toString(),
-      policyDocument: createPolicy(event, "Allow"),
+      principalId: verifiedJwt.sub!.toString(), //a unique UUID per user; reviewerId in the Lambda
+      policyDocument: createPolicy(event, "Allow"), // Allow or Deny for this API route
       context: {
         email: verifiedJwt.email,
         username: verifiedJwt["cognito:username"],

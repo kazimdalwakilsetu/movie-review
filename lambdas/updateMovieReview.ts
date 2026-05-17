@@ -36,10 +36,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           PK: `m#${movieId}`,
           SK: `r#${reviewerId}`,
         },
-        UpdateExpression: "SET #t = :text",
-        ConditionExpression: "attribute_exists(PK)",
-        ExpressionAttributeNames: { "#t": "text" },
-        ExpressionAttributeValues: { ":text": text },
+        UpdateExpression: "SET #t = :text", //setting the text attribute
+        ConditionExpression: "attribute_exists(PK)", //only update if item already exists
+        ExpressionAttributeNames: { "#t": "text" }, //setting alias #t
+        ExpressionAttributeValues: { ":text": text }, // setting the actual value
       })
     );
 

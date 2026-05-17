@@ -80,6 +80,7 @@ export class AppApi extends Construct {
     [getMovieReviewsFn, getReviewsByDateFn, addMovieReviewFn, updateMovieReviewFn]
       .forEach(fn => fn.addToRolePolicy(tablePolicy));
 
+    // GET routes are public, POST and PUT routes require the authorizer
     const requestAuthorizer = new apig.RequestAuthorizer(this, "RequestAuthorizer", {
       identitySources: [apig.IdentitySource.header("cookie")],
       handler: authorizerFn,
@@ -94,10 +95,10 @@ export class AppApi extends Construct {
       },
     });
 
-    const moviesRes = api.root.addResource("movies");
+    const moviesRes = api.root.addResource("movies"); // /movies
 
-    const movieRes = moviesRes.addResource("{movieId}");
-    const movieReviewsRes = movieRes.addResource("reviews");
+    const movieRes = moviesRes.addResource("{movieId}"); // /movies/{movieId}
+    const movieReviewsRes = movieRes.addResource("reviews"); // /movies/{movieId}/reviews
 
     movieReviewsRes.addMethod("GET", new apig.LambdaIntegration(getMovieReviewsFn));
     movieReviewsRes.addMethod("PUT", new apig.LambdaIntegration(updateMovieReviewFn), {
@@ -105,13 +106,13 @@ export class AppApi extends Construct {
       authorizationType: apig.AuthorizationType.CUSTOM,
     });
 
-    const moviesReviewsRes = moviesRes.addResource("reviews");
+    const moviesReviewsRes = moviesRes.addResource("reviews"); // /movies/reviews
     moviesReviewsRes.addMethod("POST", new apig.LambdaIntegration(addMovieReviewFn), {
       authorizer: requestAuthorizer,
       authorizationType: apig.AuthorizationType.CUSTOM,
     });
 
-    const reviewsRes = api.root.addResource("reviews");
+    const reviewsRes = api.root.addResource("reviews"); // /reviews
     reviewsRes.addMethod("GET", new apig.LambdaIntegration(getReviewsByDateFn));
   }
 }

@@ -16,6 +16,11 @@ const isValidBodyParams = ajv.compile<SignUpBody>(
 const client = new CognitoIdentityProviderClient({ region: process.env.REGION });
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  const defaultHeaders: Record<string, string> = {
+    "content-type": "application/json",
+    "Access-Control-Allow-Origin": "http://localhost:5173",
+  };
+
   try {
     console.log("[EVENT]", event);
     const body = event.body ? JSON.parse(event.body) : undefined;
@@ -23,9 +28,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     if (!isValidBodyParams(body)) {
       return {
         statusCode: 400,
-        headers: { "content-type": "application/json" },
+        headers: defaultHeaders,
         body: JSON.stringify({
-          message: `Incorrect type. Must match SignUpBody schema`,
+          message: "Incorrect type. Must match SignUpBody schema",
           schema: schema.definitions["SignUpBody"],
         }),
       };
@@ -44,14 +49,14 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { "content-type": "application/json" },
+      headers: defaultHeaders,
       body: JSON.stringify({ message: res }),
     };
   } catch (err) {
     console.error(err);
     return {
       statusCode: 500,
-      headers: { "content-type": "application/json" },
+      headers: defaultHeaders,
       body: JSON.stringify({ error: (err as Error).message }),
     };
   }
